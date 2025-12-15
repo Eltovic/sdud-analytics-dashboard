@@ -1,0 +1,7 @@
+pandas
+sqlalchemy
+pyodbc
+dash
+plotly
+statsmodels
+kaleido

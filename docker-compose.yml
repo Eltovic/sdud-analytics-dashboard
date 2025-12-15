@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # SQL Server service (optional, for local development)
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sdud-sqlserver
+    platform: linux/amd64
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=StrongPassword123!
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "StrongPassword123!" -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - sdud-network
+
+  # Dashboard service
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sdud-dashboard:latest
+    container_name: sdud-dashboard
+    platform: linux/amd64
+    environment:
+      # Connect to the SQL Server service defined above
+      - DB_HOST=sqlserver
+      - DB_PORT=1433
+      - DB_NAME=master
+      - DB_USER=sa
+      - DB_PASSWORD=StrongPassword123!
+      - ODBC_DRIVER=ODBC Driver 18 for SQL Server
+      - DB_TRUST_SERVER_CERTIFICATE=yes
+      # Uncomment to use a custom connection string instead:
+      # - DATABASE_URL=mssql+pyodbc://sa:StrongPassword123!@sqlserver:1433/master?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes
+    ports:
+      - "8050:8050"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('127.0.0.1',8050)); s.close()"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - sdud-network
+    restart: unless-stopped
+
+volumes:
+  sqlserver-data:
+    name: sdud-sqlserver-data
+
+networks:
+  sdud-network:
+    name: sdud-network
+    driver: bridge
