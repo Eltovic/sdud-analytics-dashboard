@@ -66,3 +66,4 @@ app/dashboard_backup.py
 
 # OS
 Thumbs.db
+Raw/*.csv
